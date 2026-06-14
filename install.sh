@@ -17,8 +17,8 @@ install_deps() {
   PKG=$(detect_pkg)
   case $PKG in
     apt)
-      apt-get update -qq
-      apt-get install -y inkscape curl wget tar
+      apt-get update -qq 2>/dev/null || true
+      apt-get install -y inkscape curl wget tar 2>/dev/null
       ;;
     dnf)
       dnf install -y inkscape curl wget tar
@@ -34,6 +34,7 @@ install_deps() {
 }
 
 install_go() {
+  export PATH=$PATH:/usr/local/go/bin
   if command -v go &>/dev/null; then return; fi
   ARCH=$(uname -m)
   case $ARCH in
