@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generator Kartu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="header-icon">K</div>
+        <div>
+          <h1>Generator Kartu Otomatis</h1>
+          <span>Inkscape &middot; 300 DPI &middot; Ukuran KTP</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">1</span>
+        <h2>Unduh Template</h2>
+      </div>
+      <p class="hint">
+        Unduh template CSV lalu isi dengan data. Kolom <code>foto_user</code> dan <code>qr_user</code>
+        diisi nama file gambar yang di-upload di langkah 5.
+      </p>
+      <div class="download-row">
+        <a href="/api/template-csv" class="btn btn-outline">Unduh template_data.csv</a>
+        <a href="/api/template-svg" class="btn btn-outline">Unduh desain.svg</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">2</span>
+        <h2>Upload Data CSV</h2>
+      </div>
+      <div class="drop-zone" id="dzCsv" onclick="document.getElementById('csvInput').click()">
+        <input type="file" id="csvInput" accept=".csv" onchange="onFileSelect(this,'dzCsv','csvName')">
+        <div class="drop-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+        </div>
+        <div class="drop-label">Klik atau seret file CSV ke sini</div>
+        <div class="file-name" id="csvName"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">3</span>
+        <h2>Upload Template Desain (SVG)</h2>
+      </div>
+      <div class="drop-zone" id="dzSvg" onclick="document.getElementById('svgInput').click()">
+        <input type="file" id="svgInput" accept=".svg" onchange="onFileSelect(this,'dzSvg','svgName')">
+        <div class="drop-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+        </div>
+        <div class="drop-label">Klik atau seret file SVG (Inkscape) ke sini</div>
+        <div class="file-name" id="svgName"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline btn-sm" onclick="generateConfig()">Generate Config dari SVG</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">4</span>
+        <h2>Orientasi Kartu</h2>
+      </div>
+      <div class="toggle-group">
+        <label class="toggle-item">
+          <input type="radio" name="orientation" value="portrait" checked onchange="setOrientation(this)">
+          <span class="toggle-label">
+            <span class="toggle-icon portrait-icon"></span>
+            Potrait
+            <small>638 x 1012 px</small>
+          </span>
+        </label>
+        <label class="toggle-item">
+          <input type="radio" name="orientation" value="landscape" onchange="setOrientation(this)">
+          <span class="toggle-label">
+            <span class="toggle-icon landscape-icon"></span>
+            Landscape
+            <small>1012 x 638 px</small>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">5</span>
+        <h2>Upload Gambar</h2>
+      </div>
+      <div class="upload-grid">
+        <div class="upload-field">
+          <label>Logo Instansi</label>
+          <p class="hint">1 file, otomatis menyesuaikan ukuran template</p>
+          <div class="file-input-wrap">
+            <input type="file" id="logoInput" accept="image/*">
+          </div>
+        </div>
+        <div class="upload-field">
+          <label>Foto User</label>
+          <p class="hint">Multiple file atau ZIP, nama file = username / uid</p>
+          <div class="file-input-wrap">
+            <input type="file" id="fotoInput" accept="image/*,.zip" multiple>
+          </div>
+        </div>
+        <div class="upload-field">
+          <label>QR Code User</label>
+          <p class="hint">Multiple file atau ZIP, nama file = username / uid</p>
+          <div class="file-input-wrap">
+            <input type="file" id="qrInput" accept="image/*,.zip" multiple>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge">6</span>
+        <h2>Generate Kartu</h2>
+      </div>
+      <div id="alertBox" class="alert"></div>
+      <button class="btn btn-primary btn-lg" id="btnGenerate" onclick="startGenerate()">
+        Generate Semua Kartu
+      </button>
+      <div id="progressWrap" class="progress-section" style="display:none">
+        <div class="progress-header">
+          <span class="status-text" id="statusText">Memproses...</span>
+          <span class="progress-pct" id="progressPct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressBar"></div>
+        </div>
+        <div class="progress-fraction" id="progressFraction"></div>
+      </div>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none">
+      <div class="card-header">
+        <h2>Hasil Generate</h2>
+        <span class="result-total" id="resultTotal"></span>
+      </div>
+      <div class="result-toolbar">
+        <div class="select-actions">
+          <button class="btn btn-outline btn-sm" onclick="selectAll(true)">Pilih Semua</button>
+          <button class="btn btn-outline btn-sm" onclick="selectAll(false)">Batal Pilih</button>
+          <span class="selected-count" id="selectedCount">0 dipilih</span>
+        </div>
+        <div class="download-actions">
+          <button class="btn btn-success btn-sm" onclick="downloadZip('selected')">Unduh Dipilih (.zip)</button>
+          <button class="btn btn-success btn-sm" onclick="downloadZip('all')">Unduh Semua (.zip)</button>
+        </div>
+      </div>
+      <div id="resultGrid"></div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
