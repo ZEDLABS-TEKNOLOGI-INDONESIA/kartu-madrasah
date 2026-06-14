@@ -18,12 +18,12 @@ install_deps() {
   case $PKG in
     apt)
       apt-get update -qq 2>/dev/null || true
-      apt-get install -y inkscape curl wget tar 2>/dev/null
+      apt-get install -y inkscape curl wget tar git 2>/dev/null
       ;;
-    dnf) dnf install -y inkscape curl wget tar ;;
-    yum) yum install -y inkscape curl wget tar ;;
+    dnf) dnf install -y inkscape curl wget tar git ;;
+    yum) yum install -y inkscape curl wget tar git ;;
     *)
-      echo "Package manager tidak dikenali. Install inkscape secara manual."
+      echo "Package manager tidak dikenali."
       exit 1
       ;;
   esac
@@ -34,22 +34,19 @@ install_go() {
   if command -v go &>/dev/null && [[ "$(go version 2>/dev/null)" == *"go1.2"* ]]; then
     return
   fi
-
   ARCH=$(uname -m)
   case $ARCH in
-    x86_64)   GOARCH="amd64" ;;
+    x86_64)        GOARCH="amd64" ;;
     aarch64|arm64) GOARCH="arm64" ;;
-    armv7l)   GOARCH="armv6l" ;;
+    armv7l)        GOARCH="armv6l" ;;
     *) echo "Arsitektur $ARCH tidak didukung."; exit 1 ;;
   esac
-
   GOVER="1.24.4"
   GOTAR="go${GOVER}.linux-${GOARCH}.tar.gz"
   wget -q "https://go.dev/dl/$GOTAR" -O "/tmp/$GOTAR"
   rm -rf /usr/local/go
   tar -C /usr/local -xzf "/tmp/$GOTAR"
   rm "/tmp/$GOTAR"
-
   export PATH=/usr/local/go/bin:$PATH
   echo 'export PATH=/usr/local/go/bin:$PATH' > /etc/profile.d/go.sh
   chmod +x /etc/profile.d/go.sh
@@ -57,17 +54,9 @@ install_go() {
 
 build_app() {
   export PATH=/usr/local/go/bin:$PATH
-
   local SRC="$APP_DIR/src"
   rm -rf "$SRC"
-
-  if [ -f "$(dirname "$0")/go.mod" ]; then
-    cp -r "$(dirname "$0")/." "$SRC"
-  else
-    apt-get install -y git -qq 2>/dev/null || dnf install -y git 2>/dev/null || yum install -y git 2>/dev/null || true
-    git clone https://github.com/zulfikriyahya/kartu-madrasah.git "$SRC"
-  fi
-
+  git clone https://github.com/zulfikriyahya/kartu-madrasah.git "$SRC"
   cd "$SRC"
   go mod download
   CGO_ENABLED=0 go build -ldflags="-s -w" -o "$BIN" .
@@ -95,7 +84,6 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF
-
   systemctl daemon-reload
   systemctl enable "$APP_NAME"
   systemctl restart "$APP_NAME"
