@@ -20,12 +20,8 @@ install_deps() {
       apt-get update -qq 2>/dev/null || true
       apt-get install -y inkscape curl wget tar 2>/dev/null
       ;;
-    dnf)
-      dnf install -y inkscape curl wget tar
-      ;;
-    yum)
-      yum install -y inkscape curl wget tar
-      ;;
+    dnf) dnf install -y inkscape curl wget tar ;;
+    yum) yum install -y inkscape curl wget tar ;;
     *)
       echo "Package manager tidak dikenali. Install inkscape secara manual."
       exit 1
@@ -34,39 +30,49 @@ install_deps() {
 }
 
 install_go() {
-  export PATH=$PATH:/usr/local/go/bin
-  if command -v go &>/dev/null; then return; fi
+  export PATH=/usr/local/go/bin:$PATH
+  if command -v go &>/dev/null && [[ "$(go version 2>/dev/null)" == *"go1.2"* ]]; then
+    return
+  fi
+
   ARCH=$(uname -m)
   case $ARCH in
-    x86_64) GOARCH="amd64" ;;
+    x86_64)   GOARCH="amd64" ;;
     aarch64|arm64) GOARCH="arm64" ;;
-    armv7l) GOARCH="armv6l" ;;
-    *) echo "Arsitektur $ARCH tidak didukung." ; exit 1 ;;
+    armv7l)   GOARCH="armv6l" ;;
+    *) echo "Arsitektur $ARCH tidak didukung."; exit 1 ;;
   esac
+
   GOVER="1.24.4"
-  GOTAR="go$GOVER.linux-$GOARCH.tar.gz"
-  wget -q "https://go.dev/dl/$GOTAR" -O /tmp/$GOTAR
+  GOTAR="go${GOVER}.linux-${GOARCH}.tar.gz"
+  wget -q "https://go.dev/dl/$GOTAR" -O "/tmp/$GOTAR"
   rm -rf /usr/local/go
-  tar -C /usr/local -xzf /tmp/$GOTAR
-  rm /tmp/$GOTAR
-  export PATH=$PATH:/usr/local/go/bin
-  echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile.d/go.sh
+  tar -C /usr/local -xzf "/tmp/$GOTAR"
+  rm "/tmp/$GOTAR"
+
+  export PATH=/usr/local/go/bin:$PATH
+  echo 'export PATH=/usr/local/go/bin:$PATH' > /etc/profile.d/go.sh
+  chmod +x /etc/profile.d/go.sh
 }
 
 build_app() {
-  export PATH=$PATH:/usr/local/go/bin
-  mkdir -p $APP_DIR
-  cp -r . $APP_DIR/src
-  cd $APP_DIR/src
+  export PATH=/usr/local/go/bin:$PATH
+
+  local SRC="$APP_DIR/src"
+  mkdir -p "$SRC"
+  cp -r . "$SRC"
+  cd "$SRC"
+
   go mod download
-  CGO_ENABLED=0 go build -ldflags="-s -w" -o $BIN .
-  cd -
-  rm -rf $APP_DIR/src
+  CGO_ENABLED=0 go build -ldflags="-s -w" -o "$BIN" .
+
+  cd - > /dev/null
+  rm -rf "$SRC"
 }
 
 create_service() {
   PORT="${PORT:-8090}"
-  cat > $SERVICE_FILE <<EOF
+  cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=Generator Kartu Otomatis
 After=network.target
@@ -84,9 +90,10 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF
+
   systemctl daemon-reload
-  systemctl enable $APP_NAME
-  systemctl restart $APP_NAME
+  systemctl enable "$APP_NAME"
+  systemctl restart "$APP_NAME"
 }
 
 echo "=== Instalasi $APP_NAME ==="
