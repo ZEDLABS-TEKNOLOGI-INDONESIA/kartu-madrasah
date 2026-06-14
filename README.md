@@ -7,7 +7,7 @@ Aplikasi web untuk generate kartu identitas (KTP-size) secara massal dari templa
 - Upload template desain SVG (Inkscape)
 - Upload data massal via CSV
 - Inject teks dan gambar (logo, foto, QR code) ke template SVG
-- Output PNG 300 DPI ukuran KTP — Potrait (638×1012 px) atau Landscape (1012×638 px)
+- Output PNG 300 DPI ukuran KTP — Portrait (638×1012 px) atau Landscape (1012×638 px)
 - Unduh satu per satu, dipilih, atau semua dalam ZIP
 - Auto-generate config YAML dari elemen SVG
 
@@ -69,8 +69,8 @@ Menghapus service systemd dan semua file di `/opt/svgextract`.
 ## Build Manual (Multi-Arch)
 
 ```bash
-chmod +x build.sh
-./build.sh
+chmod +x generate.sh
+./generate.sh
 ```
 
 Output binary tersimpan di folder `dist/`:
@@ -109,7 +109,7 @@ journalctl -u svgextract -f
 
 ## Placeholder SVG
 
-Tambahkan placeholder berikut pada teks di file SVG:
+Tambahkan placeholder berikut pada elemen teks di file SVG:
 
 ```
 %VAR_nama_instansi%
@@ -137,6 +137,8 @@ Beri `id` berikut pada elemen `<rect>` atau `<image>` di SVG:
 File gambar bisa diupload satu per satu atau dalam satu file ZIP.
 
 ## API Endpoint
+
+Base URL: `http://localhost:8090`
 
 | Method | Endpoint | Keterangan |
 |--------|----------|------------|
