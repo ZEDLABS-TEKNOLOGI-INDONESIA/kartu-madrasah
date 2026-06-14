@@ -390,7 +390,6 @@ func escXML(s string) string {
 func runInkscape(svgPath, pngPath string, portrait bool) error {
 	globalSem <- struct{}{}
 	defer func() { <-globalSem }()
-
 	w, h := ktpLandscapeW, ktpLandscapeH
 	if portrait {
 		w, h = ktpPortraitW, ktpPortraitH
@@ -456,6 +455,8 @@ func handleStatic(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	case ".js":
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	case ".ico":
+		w.Header().Set("Content-Type", "image/x-icon")
 	default:
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	}
@@ -507,7 +508,6 @@ func handleExtractConfig(w http.ResponseWriter, r *http.Request) {
 func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(128 << 20)
 	portrait := r.FormValue("orientation") != "landscape"
-
 	svgFile, _, err := r.FormFile("svg")
 	if err != nil {
 		jsonErr(w, "SVG tidak ditemukan", 400)
@@ -515,7 +515,6 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	svgData, _ := io.ReadAll(svgFile)
 	svgFile.Close()
-
 	csvFile, _, err := r.FormFile("csv")
 	if err != nil {
 		jsonErr(w, "CSV tidak ditemukan", 400)
@@ -523,13 +522,11 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	csvData, _ := io.ReadAll(csvFile)
 	csvFile.Close()
-
 	rows, _, err := parseCSV(csvData)
 	if err != nil {
 		jsonErr(w, "gagal parse CSV: "+err.Error(), 400)
 		return
 	}
-
 	globalImages := map[string][]byte{}
 	if lf, _, err := r.FormFile("logo_instansi"); err == nil {
 		globalImages["logo_instansi"], _ = io.ReadAll(lf)
@@ -537,22 +534,18 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	fotoMap := readMultipleFiles(r, "foto_user")
 	qrMap := readMultipleFiles(r, "qr_user")
-
 	jobID := fmt.Sprintf("job_%d", time.Now().UnixNano())
 	job := store.New(jobID)
 	job.Total = len(rows)
 	tmpDir, _ := os.MkdirTemp("", jobID)
-
 	go func() {
 		job.mu.Lock()
 		job.Status = "processing"
 		job.mu.Unlock()
-
 		type prepared struct {
 			svgPath string
 			pngPath string
 		}
-
 		var preparedList []prepared
 		for _, row := range rows {
 			uid := row["username"]
@@ -583,7 +576,6 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 			}
 			preparedList = append(preparedList, prepared{svgPath, pngPath})
 		}
-
 		var wg sync.WaitGroup
 		for _, p := range preparedList {
 			wg.Add(1)
@@ -597,20 +589,17 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 			}(p)
 		}
 		wg.Wait()
-
 		var outFiles []string
 		for _, p := range preparedList {
 			if _, err := os.Stat(p.pngPath); err == nil {
 				outFiles = append(outFiles, p.pngPath)
 			}
 		}
-
 		job.mu.Lock()
 		job.Status = "done"
 		job.Files = outFiles
 		job.mu.Unlock()
 	}()
-
 	jsonOK(w, map[string]string{"job_id": jobID})
 }
 
@@ -766,14 +755,10 @@ func findImage(m map[string][]byte, pathInCSV, username string) []byte {
 	if d, ok := m[pathInCSV]; ok {
 		return d
 	}
-	if d, ok := m[username+".png"]; ok {
-		return d
-	}
-	if d, ok := m[username+".jpg"]; ok {
-		return d
-	}
-	if d, ok := m[username+".jpeg"]; ok {
-		return d
+	for _, ext := range []string{".png", ".jpg", ".jpeg", ".webp"} {
+		if d, ok := m[username+ext]; ok {
+			return d
+		}
 	}
 	if d, ok := m[username]; ok {
 		return d
@@ -797,9 +782,7 @@ func main() {
 	if port == "" {
 		port = "8090"
 	}
-
 	go store.cleanup()
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/template-csv", handleTemplateCSV)
 	mux.HandleFunc("/api/template-svg", handleTemplateSVG)
@@ -810,7 +793,6 @@ func main() {
 	mux.HandleFunc("/api/download", handleDownloadOne)
 	mux.HandleFunc("/api/download-zip", handleDownloadZip)
 	mux.HandleFunc("/", handleStatic)
-
 	fmt.Printf("Server berjalan di http://localhost:%s\n", port)
 	http.ListenAndServe(":"+port, mux)
 }

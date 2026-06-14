@@ -8,18 +8,14 @@ EXCLUDE_DIRS=(
   ".git"
   ".vscode"
   ".cache"
+  "template"
 )
 
 # File spesifik yang dikecualikan
 EXCLUDE_FILES=(
-  "generate.sh"
-  "draft.md"
-  ".env"
   ".gitignore"
-  "README.md"
   "LICENSE"
-  "konsep.md"
-)
+  )
 
 # Ekstensi biner yang dikecualikan
 BINARY_EXTS=(
@@ -30,7 +26,7 @@ BINARY_EXTS=(
   xlsx xls doc docx ppt pptx
   exe bin so dll dylib
   db sqlite sqlite3
-  lock map pyc pyo
+  lock map pyc pyo csv sh md
 )
 
 # Ekstensi teks yang dikenali beserta nama lang-nya untuk code fence

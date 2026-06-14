@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Generator Kartu</title>
+  <link rel="icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -31,10 +32,8 @@
         <span class="badge">1</span>
         <h2>Unduh Template</h2>
       </div>
-      <p class="hint">
-        Unduh template CSV lalu isi dengan data. Kolom <code>foto_user</code> dan <code>qr_user</code>
-        diisi nama file gambar yang di-upload di langkah 5.
-      </p>
+      <p class="hint">Unduh template CSV lalu isi dengan data. Kolom <code>foto_user</code> dan <code>qr_user</code>
+        diisi nama file gambar yang di-upload di langkah 5.</p>
       <div class="download-row">
         <a href="/api/template-csv" class="btn btn-outline">Unduh template_data.csv</a>
         <a href="/api/template-svg" class="btn btn-outline">Unduh desain.svg</a>
@@ -143,9 +142,7 @@
         <h2>Generate Kartu</h2>
       </div>
       <div id="alertBox" class="alert"></div>
-      <button class="btn btn-primary btn-lg" id="btnGenerate" onclick="startGenerate()">
-        Generate Semua Kartu
-      </button>
+      <button class="btn btn-primary btn-lg" id="btnGenerate" onclick="startGenerate()">Generate Semua Kartu</button>
       <div id="progressWrap" class="progress-section" style="display:none">
         <div class="progress-header">
           <span class="status-text" id="statusText">Memproses...</span>

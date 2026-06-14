@@ -3,7 +3,7 @@
 *::after {
   box-sizing: border-box;
   margin: 0;
-  padding: 0;
+  padding: 0
 }
 
 :root {
@@ -72,23 +72,22 @@ header {
 header h1 {
   font-size: 1.1rem;
   font-weight: 700;
-  letter-spacing: -.01em;
+  letter-spacing: -.01em
 }
 
 header span {
   font-size: .78rem;
   opacity: .75;
-  font-weight: 400;
+  font-weight: 400
 }
 
 .container {
   max-width: 900px;
   margin: 2rem auto;
-  padding: 0 1.25rem;
+  padding: 0 1.25rem 3rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding-bottom: 3rem;
 }
 
 .card {
@@ -101,7 +100,7 @@ header span {
 }
 
 .card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md)
 }
 
 .card-header {
@@ -114,7 +113,14 @@ header span {
 .card-header h2 {
   font-size: .98rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text)
+}
+
+.result-total {
+  margin-left: auto;
+  font-size: .82rem;
+  color: var(--muted);
+  font-weight: 500;
 }
 
 .badge {
@@ -135,7 +141,7 @@ header span {
   font-size: .82rem;
   color: var(--muted);
   margin-bottom: .9rem;
-  line-height: 1.55;
+  line-height: 1.55
 }
 
 code {
@@ -150,7 +156,7 @@ code {
 .download-row {
   display: flex;
   gap: .75rem;
-  flex-wrap: wrap;
+  flex-wrap: wrap
 }
 
 .drop-zone {
@@ -167,28 +173,28 @@ code {
 .drop-zone:hover,
 .drop-zone.drag {
   border-color: var(--primary);
-  background: var(--primary-light);
+  background: var(--primary-light)
 }
 
 .drop-zone input {
-  display: none;
+  display: none
 }
 
 .drop-icon {
   color: var(--muted);
   margin-bottom: .6rem;
-  transition: color .2s;
+  transition: color .2s
 }
 
 .drop-zone:hover .drop-icon,
 .drop-zone.drag .drop-icon {
-  color: var(--primary);
+  color: var(--primary)
 }
 
 .drop-label {
   font-size: .875rem;
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 500
 }
 
 .file-name {
@@ -197,29 +203,30 @@ code {
   margin-top: .4rem;
   font-weight: 600;
   min-height: 1.2em;
+  word-break: break-all;
 }
 
 .actions {
   display: flex;
   gap: .6rem;
   flex-wrap: wrap;
-  margin-top: .9rem;
+  margin-top: .9rem
 }
 
 .toggle-group {
   display: flex;
   gap: .75rem;
-  flex-wrap: wrap;
+  flex-wrap: wrap
 }
 
 .toggle-item {
   cursor: pointer;
   flex: 1;
-  min-width: 140px;
+  min-width: 140px
 }
 
 .toggle-item input {
-  display: none;
+  display: none
 }
 
 .toggle-label {
@@ -240,56 +247,56 @@ code {
 .toggle-label small {
   font-size: .72rem;
   font-weight: 400;
-  opacity: .75;
+  opacity: .75
 }
 
 .toggle-icon {
   display: block;
   border: 2px solid currentColor;
   border-radius: 3px;
-  opacity: .5;
+  opacity: .5
 }
 
 .portrait-icon {
   width: 18px;
-  height: 26px;
+  height: 26px
 }
 
 .landscape-icon {
   width: 26px;
-  height: 18px;
+  height: 18px
 }
 
 .toggle-item input:checked+.toggle-label {
   border-color: var(--primary);
   background: var(--primary-light);
-  color: var(--primary);
+  color: var(--primary)
 }
 
 .toggle-item input:checked+.toggle-label .toggle-icon {
-  opacity: 1;
+  opacity: 1
 }
 
 .upload-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 1rem;
+  gap: 1rem
 }
 
 .upload-field {
   display: flex;
   flex-direction: column;
-  gap: .3rem;
+  gap: .3rem
 }
 
 .upload-field label {
   font-size: .82rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text)
 }
 
 .upload-field .hint {
-  margin-bottom: .4rem;
+  margin-bottom: .4rem
 }
 
 .file-input-wrap input[type=file] {
@@ -306,7 +313,7 @@ code {
 }
 
 .file-input-wrap input[type=file]:hover {
-  border-color: var(--primary);
+  border-color: var(--primary)
 }
 
 .btn {
@@ -327,55 +334,55 @@ code {
 }
 
 .btn:active {
-  transform: scale(.97);
+  transform: scale(.97)
 }
 
 .btn-primary {
   background: var(--primary);
-  color: #fff;
+  color: #fff
 }
 
 .btn-primary:hover {
-  background: var(--primary-h);
+  background: var(--primary-h)
 }
 
 .btn-lg {
   padding: .75rem 2rem;
-  font-size: .95rem;
+  font-size: .95rem
 }
 
 .btn-outline {
   background: #fff;
   color: var(--primary);
-  border: 1.5px solid var(--primary);
+  border: 1.5px solid var(--primary)
 }
 
 .btn-outline:hover {
-  background: var(--primary-light);
+  background: var(--primary-light)
 }
 
 .btn-success {
   background: var(--success);
-  color: #fff;
+  color: #fff
 }
 
 .btn-success:hover {
-  background: var(--success-h);
+  background: var(--success-h)
 }
 
 .btn-sm {
   padding: .38rem .85rem;
-  font-size: .78rem;
+  font-size: .78rem
 }
 
 .btn:disabled {
   opacity: .45;
   cursor: not-allowed;
-  transform: none;
+  transform: none
 }
 
 .progress-section {
-  margin-top: 1.25rem;
+  margin-top: 1.25rem
 }
 
 .progress-header {
@@ -388,20 +395,20 @@ code {
 .status-text {
   font-size: .85rem;
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 500
 }
 
 .progress-pct {
   font-size: .85rem;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--primary)
 }
 
 .progress-fraction {
   font-size: .75rem;
   color: var(--muted);
   margin-top: .3rem;
-  text-align: right;
+  text-align: right
 }
 
 .progress-track {
@@ -434,21 +441,21 @@ code {
 
 @keyframes shimmer {
   0% {
-    background-position: 200% 0;
+    background-position: 200% 0
   }
 
   100% {
-    background-position: -200% 0;
+    background-position: -200% 0
   }
 }
 
 @keyframes gloss {
   0% {
-    transform: translateX(-100%);
+    transform: translateX(-100%)
   }
 
   100% {
-    transform: translateX(400%);
+    transform: translateX(400%)
   }
 }
 
@@ -459,15 +466,15 @@ code {
 
 @keyframes slide {
   0% {
-    margin-left: 0%;
+    margin-left: 0%
   }
 
   50% {
-    margin-left: 70%;
+    margin-left: 70%
   }
 
   100% {
-    margin-left: 0%;
+    margin-left: 0%
   }
 }
 
@@ -481,19 +488,19 @@ code {
 }
 
 .alert.show {
-  display: block;
+  display: block
 }
 
 .alert-success {
   background: #f0fdf4;
   border: 1px solid #a7f3d0;
-  color: var(--success);
+  color: var(--success)
 }
 
 .alert-error {
   background: #fff5f5;
   border: 1px solid #fecaca;
-  color: var(--danger);
+  color: var(--danger)
 }
 
 .result-toolbar {
@@ -511,19 +518,19 @@ code {
   display: flex;
   align-items: center;
   gap: .5rem;
-  flex-wrap: wrap;
+  flex-wrap: wrap
 }
 
 .download-actions {
   display: flex;
   gap: .5rem;
-  flex-wrap: wrap;
+  flex-wrap: wrap
 }
 
 .selected-count {
   font-size: .8rem;
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 500
 }
 
 #resultGrid {
@@ -542,7 +549,7 @@ code {
 }
 
 .result-item:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md)
 }
 
 .result-item input[type=checkbox] {
@@ -563,7 +570,7 @@ code {
 }
 
 .result-item.landscape img {
-  aspect-ratio: 1012/638;
+  aspect-ratio: 1012/638
 }
 
 .result-label {
@@ -591,61 +598,115 @@ code {
 }
 
 .result-item a:hover {
-  background: var(--primary-light);
+  background: var(--primary-light)
 }
 
-@media (max-width: 700px) {
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: 1.25rem;
+}
+
+.page-btn {
+  padding: .35rem .65rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary)
+}
+
+.page-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary)
+}
+
+.page-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed
+}
+
+.page-info {
+  font-size: .78rem;
+  color: var(--muted);
+  padding: 0 .25rem
+}
+
+@media(max-width:700px) {
   .container {
-    padding: 0 .75rem;
-    margin: 1rem auto;
+    padding: 0 .75rem 2rem;
+    margin: 1rem auto
   }
 
   .card {
-    padding: 1.1rem;
+    padding: 1.1rem
   }
 
   .upload-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr
   }
 
   .toggle-group {
-    flex-direction: column;
+    flex-direction: column
   }
 
   .toggle-item {
-    min-width: unset;
+    min-width: unset
   }
 
   .toggle-label {
     flex-direction: row;
     justify-content: flex-start;
-    padding: .65rem .9rem;
+    padding: .65rem .9rem
   }
 
   .result-toolbar {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-start
   }
 
   #resultGrid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))
   }
 
   .btn-lg {
-    width: 100%;
+    width: 100%
   }
 }
 
-@media (max-width: 480px) {
+@media(max-width:480px) {
   header h1 {
-    font-size: .95rem;
+    font-size: .95rem
+  }
+
+  .download-row {
+    flex-direction: column
+  }
+
+  .download-row .btn {
+    width: 100%;
+    text-align: center
   }
 
   .download-actions {
-    width: 100%;
+    width: 100%
   }
 
   .download-actions .btn {
-    flex: 1;
+    flex: 1
   }
 }
