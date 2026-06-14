@@ -59,13 +59,18 @@ build_app() {
   export PATH=/usr/local/go/bin:$PATH
 
   local SRC="$APP_DIR/src"
-  mkdir -p "$SRC"
-  cp -r . "$SRC"
-  cd "$SRC"
+  rm -rf "$SRC"
 
+  if [ -f "$(dirname "$0")/go.mod" ]; then
+    cp -r "$(dirname "$0")/." "$SRC"
+  else
+    apt-get install -y git -qq 2>/dev/null || dnf install -y git 2>/dev/null || yum install -y git 2>/dev/null || true
+    git clone https://github.com/zulfikriyahya/kartu-madrasah.git "$SRC"
+  fi
+
+  cd "$SRC"
   go mod download
   CGO_ENABLED=0 go build -ldflags="-s -w" -o "$BIN" .
-
   cd - > /dev/null
   rm -rf "$SRC"
 }
