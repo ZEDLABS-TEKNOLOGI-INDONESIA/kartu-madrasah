@@ -10,6 +10,8 @@ Aplikasi web untuk generate kartu identitas (KTP-size) secara massal dari templa
 - Output PNG 300 DPI ukuran KTP — Portrait (638×1012 px) atau Landscape (1012×638 px)
 - Unduh satu per satu, dipilih, atau semua dalam ZIP
 - Auto-generate config YAML dari elemen SVG
+- Antrian job berbasis Redis dengan informasi status antrean
+- Cleanup otomatis file temporer setelah job kedaluwarsa
 
 ## Struktur Proyek
 
@@ -24,7 +26,11 @@ kartu-madrasah/
 │   ├── generate.go
 │   └── download.go
 ├── job/
-│   └── store.go
+│   ├── store.go
+│   ├── queue.go
+│   └── cleanup.go
+├── worker/
+│   └── worker.go
 ├── svg/
 │   ├── extract.go
 │   ├── inject.go
@@ -51,6 +57,7 @@ kartu-madrasah/
 - Linux (Debian/Ubuntu atau RHEL/CentOS)
 - Go 1.24+
 - Inkscape (CLI)
+- Redis 6+
 
 ## Instalasi
 
@@ -66,6 +73,12 @@ Port default: `8090`. Ganti dengan environment variable:
 
 ```bash
 sudo PORT=9000 ./install.sh
+```
+
+Redis URL default: `redis://localhost:6379`. Ganti dengan environment variable:
+
+```bash
+sudo REDIS_URL=redis://localhost:6379 ./install.sh
 ```
 
 ## Uninstall
@@ -162,6 +175,13 @@ Base URL: `http://localhost:8090`
 | GET | `/api/list?job_id=` | Daftar file hasil |
 | GET | `/api/download?job_id=&file=` | Unduh satu file |
 | POST | `/api/download-zip` | Unduh file terpilih sebagai ZIP |
+| GET | `/api/queue-info` | Info panjang antrian saat ini |
+
+## Catatan Teknis
+
+File temporer hasil generate disimpan sementara di direktori sistem dan otomatis dihapus setelah job kedaluwarsa (TTL 2 jam). Proses cleanup berjalan setiap 30 menit di background. Maksimum antrian job adalah 1000; jika penuh, request baru akan ditolak dengan status 503 beserta informasi panjang antrian saat ini.
+
+Setiap file yang diunduh divalidasi path-nya untuk memastikan hanya file milik job yang bersangkutan yang bisa diakses.
 
 ## Lisensi
 
