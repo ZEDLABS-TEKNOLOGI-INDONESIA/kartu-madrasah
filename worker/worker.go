@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"kartu-madrasah/csvutil"
 	"kartu-madrasah/job"
@@ -178,6 +179,11 @@ func (w *Worker) process(ctx context.Context, p *job.QueuePayload) {
 	}
 
 	w.Store.Finish(ctx, p.JobID, status, len(outFiles), outFiles)
+
+	go func() {
+		time.Sleep(job.JobTTL)
+		os.RemoveAll(p.TmpDir)
+	}()
 }
 
 func baseUID(row map[string]string) string {

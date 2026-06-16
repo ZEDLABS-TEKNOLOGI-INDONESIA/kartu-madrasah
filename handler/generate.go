@@ -54,7 +54,11 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jobID := job.NewJobID()
-	tmpDir, err := os.MkdirTemp("", jobID)
+	baseDir := os.Getenv("APP_DIR")
+	if baseDir == "" {
+		baseDir = os.TempDir()
+	}
+	tmpDir, err := os.MkdirTemp(baseDir, jobID)
 	if err != nil {
 		jsonErr(w, "gagal membuat direktori sementara", 500)
 		return

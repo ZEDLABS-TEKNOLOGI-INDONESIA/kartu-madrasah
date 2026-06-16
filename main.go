@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,6 +22,18 @@ import (
 
 //go:embed static/index.html static/style.css static/script.js static/favicon.ico template/data.csv template/desain.svg
 var embeddedFiles embed.FS
+
+func cleanupOrphanedJobs(baseDir string) {
+	entries, err := os.ReadDir(baseDir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if e.IsDir() && strings.HasPrefix(e.Name(), "job_") {
+			os.RemoveAll(filepath.Join(baseDir, e.Name()))
+		}
+	}
+}
 
 func main() {
 	port := os.Getenv("PORT")
@@ -46,6 +60,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "gagal koneksi ke Redis: %v\n", err)
 		os.Exit(1)
 	}
+
+	appDir := os.Getenv("APP_DIR")
+	if appDir == "" {
+		appDir = os.TempDir()
+	}
+	cleanupOrphanedJobs(appDir)
 
 	store := job.NewStore(rdb)
 	queue := job.NewQueue(rdb)

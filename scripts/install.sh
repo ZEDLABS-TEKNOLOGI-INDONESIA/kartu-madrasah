@@ -5,6 +5,10 @@ APP_NAME="kartu-madrasah"
 APP_DIR="/opt/$APP_NAME"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
 BIN="$APP_DIR/$APP_NAME"
+Environment=APP_DIR=$APP_DIR
+
+mkdir -p "$APP_DIR"
+chown -R "$SUDO_USER:$SUDO_USER" "$APP_DIR" 2>/dev/null || true
 
 detect_pkg() {
     if command -v apt-get &>/dev/null; then echo "apt"
@@ -95,6 +99,7 @@ RestartSec=5
 Environment=PORT=$PORT
 Environment=MAX_WORKERS=$WORKERS
 Environment=REDIS_URL=$REDIS_URL
+Environment=APP_DIR=$APP_DIR
 WorkingDirectory=$APP_DIR
 StandardOutput=journal
 StandardError=journal
@@ -104,7 +109,7 @@ MemoryMax=4G
 CPUQuota=80%
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=$APP_DIR /tmp
+ReadWritePaths=$APP_DIR
 
 [Install]
 WantedBy=multi-user.target
