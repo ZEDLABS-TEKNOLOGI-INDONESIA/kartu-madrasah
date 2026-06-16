@@ -17,7 +17,7 @@ var embeddedFiles embed.FS
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8091"
+		port = "8090"
 	}
 
 	store := job.NewStore()
