@@ -106,8 +106,11 @@ func main() {
 	mux.HandleFunc("/", h.Static)
 
 	srv := &http.Server{
-		Addr:         ":" + port,
-		Handler:      mux,
+		Addr: ":" + port,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Powered-By", "Go")
+			mux.ServeHTTP(w, r)
+		}),
 		ReadTimeout:  60 * time.Second,
 		WriteTimeout: 10 * time.Minute,
 		IdleTimeout:  120 * time.Second,
