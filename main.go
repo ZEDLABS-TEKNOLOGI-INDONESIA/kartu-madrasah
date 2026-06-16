@@ -20,6 +20,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+//go:embed static/index.html static/style.css static/script.js static/favicon.ico
+//go:embed static/fonts/Lexend-Light.woff2
+//go:embed static/fonts/Lexend-Regular.woff2
+//go:embed static/fonts/Lexend-Medium.woff2
+//go:embed static/fonts/Lexend-SemiBold.woff2
+//go:embed static/fonts/Lexend-Bold.woff2
+//go:embed template/data.csv template/desain.svg
 var embeddedFiles embed.FS
 
 func cleanupOrphanedJobs(baseDir string) {
@@ -37,7 +44,7 @@ func cleanupOrphanedJobs(baseDir string) {
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8090"
+		port = "8092"
 	}
 
 	redisURL := os.Getenv("REDIS_URL")
