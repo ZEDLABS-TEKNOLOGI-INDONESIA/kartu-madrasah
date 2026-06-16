@@ -20,7 +20,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-//go:embed static/index.html static/style.css static/script.js static/favicon.ico template/data.csv template/desain.svg
 var embeddedFiles embed.FS
 
 func cleanupOrphanedJobs(baseDir string) {
