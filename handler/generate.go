@@ -65,6 +65,7 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		j.Mu.Unlock()
 
 		type prepared struct {
+			uid     string
 			svgPath string
 			pngPath string
 		}
@@ -93,6 +94,11 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 
 			injected, err := svg.Inject(svgData, row, imgs)
 			if err != nil {
+				j.Mu.Lock()
+				j.Failed++
+				j.Error += fmt.Sprintf("[%s] gagal inject SVG: %v\n", uid, err)
+				j.Done++
+				j.Mu.Unlock()
 				continue
 			}
 
@@ -100,10 +106,15 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 			pngPath := filepath.Join(tmpDir, uid+".png")
 
 			if err := os.WriteFile(svgPath, injected, 0644); err != nil {
+				j.Mu.Lock()
+				j.Failed++
+				j.Error += fmt.Sprintf("[%s] gagal tulis SVG: %v\n", uid, err)
+				j.Done++
+				j.Mu.Unlock()
 				continue
 			}
 
-			preparedList = append(preparedList, prepared{svgPath, pngPath})
+			preparedList = append(preparedList, prepared{uid, svgPath, pngPath})
 		}
 
 		var wg sync.WaitGroup
@@ -111,7 +122,12 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 			wg.Add(1)
 			go func(p prepared) {
 				defer wg.Done()
-				svg.RunInkscape(p.svgPath, p.pngPath, portrait)
+				if err := svg.RunInkscape(p.svgPath, p.pngPath, portrait); err != nil {
+					j.Mu.Lock()
+					j.Failed++
+					j.Error += fmt.Sprintf("[%s] gagal render: %v\n", p.uid, err)
+					j.Mu.Unlock()
+				}
 				os.Remove(p.svgPath)
 				j.Mu.Lock()
 				j.Done++
@@ -128,7 +144,11 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		j.Mu.Lock()
-		j.Status = "done"
+		if j.Failed > 0 && len(outFiles) == 0 {
+			j.Status = "error"
+		} else {
+			j.Status = "done"
+		}
 		j.Files = outFiles
 		j.Mu.Unlock()
 	}()
@@ -149,6 +169,7 @@ func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 		"status": j.Status,
 		"total":  j.Total,
 		"done":   j.Done,
+		"failed": j.Failed,
 		"error":  j.Error,
 	})
 }
@@ -169,6 +190,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]interface{}{
 		"files":  names,
 		"status": j.Status,
+		"total":  j.Total,
+		"failed": j.Failed,
 	})
 }
 
@@ -241,7 +264,6 @@ func findImage(m map[string][]byte, pathInCSV, username string) []byte {
 	return nil
 }
 
-// helper untuk job store — dipakai juga di handler lain
 func getJob(h *Handler, w http.ResponseWriter, r *http.Request) *job.Job {
 	id := r.URL.Query().Get("job_id")
 	j := h.Store.Get(id)

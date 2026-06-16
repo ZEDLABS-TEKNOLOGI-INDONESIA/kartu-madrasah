@@ -105,12 +105,15 @@ function pollStatus() {
       setProgress(pct, data.done, data.total, "Memproses kartu...");
     } else if (data.status === "done") {
       clearInterval(pollTimer);
-      setProgress(
-        100,
-        data.total,
-        data.total,
-        "Selesai. " + data.total + " kartu berhasil dibuat."
-      );
+      var msg = "Selesai. " + data.total + " kartu diproses";
+      if (data.failed > 0) {
+        msg += ", " + data.failed + " gagal";
+      }
+      msg += ".";
+      setProgress(100, data.total, data.total, msg);
+      if (data.failed > 0 && data.error) {
+        showAlert("Beberapa kartu gagal dirender:\n" + data.error, "error");
+      }
       loadResults();
       resetBtn();
     } else if (data.status === "error") {
@@ -127,7 +130,11 @@ async function loadResults() {
   allFiles = data.files || [];
   selectedFiles = new Set();
   currentPage = 1;
-  document.getElementById("resultTotal").textContent = allFiles.length + " kartu";
+  var totalText = allFiles.length + " kartu";
+  if (data.failed > 0) {
+    totalText += " (" + data.failed + " gagal)";
+  }
+  document.getElementById("resultTotal").textContent = totalText;
   document.getElementById("resultCard").style.display = "block";
   renderPage();
 }

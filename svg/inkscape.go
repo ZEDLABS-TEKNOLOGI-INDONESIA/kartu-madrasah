@@ -34,6 +34,13 @@ func RunInkscape(svgPath, pngPath string, portrait bool) error {
 		svgPath,
 	)
 
+	// Cegah Inkscape mencoba koneksi ke D-Bus / display server
+	cmd.Env = append(cmd.Environ(),
+		"DBUS_SESSION_BUS_ADDRESS=",
+		"DISPLAY=",
+		"WAYLAND_DISPLAY=",
+	)
+
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("inkscape: %v - %s", err, out)
 	}

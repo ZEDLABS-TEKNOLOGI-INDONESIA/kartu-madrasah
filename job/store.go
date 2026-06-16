@@ -16,6 +16,7 @@ type Job struct {
 	Error     string
 	Total     int
 	Done      int
+	Failed    int
 	CreatedAt time.Time
 	Mu        sync.Mutex
 }
