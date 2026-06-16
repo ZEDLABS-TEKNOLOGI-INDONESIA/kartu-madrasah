@@ -14,24 +14,36 @@ Aplikasi web untuk generate kartu identitas (KTP-size) secara massal dari templa
 ## Struktur Proyek
 
 ```
-.
+kartu-madrasah/
 ├── main.go
 ├── go.mod
 ├── go.sum
-├── install.sh
-├── uninstall.sh
-├── generate.sh
+├── handler/
+│   ├── handler.go
+│   ├── template.go
+│   ├── generate.go
+│   └── download.go
+├── job/
+│   └── store.go
+├── svg/
+│   ├── extract.go
+│   ├── inject.go
+│   └── inkscape.go
+├── csvutil/
+│   └── parse.go
 ├── static/
 │   ├── index.html
 │   ├── style.css
 │   ├── script.js
 │   └── favicon.ico
-└── template/
-    ├── data.csv
-    ├── desain.svg
-    ├── foto.zip
-    ├── logo_instansi.png
-    └── qr_user.zip
+├── template/
+│   ├── desain.svg
+│   └── data.csv
+└── scripts/
+    ├── build.sh
+    ├── install.sh
+    ├── uninstall.sh
+    └── generate.sh
 ```
 
 ## Prasyarat
@@ -43,7 +55,7 @@ Aplikasi web untuk generate kartu identitas (KTP-size) secara massal dari templa
 ## Instalasi
 
 ```bash
-wget -O install.sh https://raw.githubusercontent.com/zulfikriyahya/kartu-madrasah/main/install.sh
+wget -O install.sh https://raw.githubusercontent.com/zulfikriyahya/kartu-madrasah/main/scripts/install.sh
 chmod +x install.sh
 sudo ./install.sh
 ```
@@ -59,35 +71,35 @@ sudo PORT=9000 ./install.sh
 ## Uninstall
 
 ```bash
-wget -O uninstall.sh https://raw.githubusercontent.com/zulfikriyahya/kartu-madrasah/main/uninstall.sh
+wget -O uninstall.sh https://raw.githubusercontent.com/zulfikriyahya/kartu-madrasah/main/scripts/uninstall.sh
 chmod +x uninstall.sh
 sudo ./uninstall.sh
 ```
 
-Menghapus service systemd dan semua file di `/opt/svgextract`.
+Menghapus service systemd dan semua file di `/opt/kartu-madrasah`.
 
 ## Build Manual (Multi-Arch)
 
 ```bash
-chmod +x generate.sh
-./generate.sh
+chmod +x scripts/build.sh
+./scripts/build.sh
 ```
 
 Output binary tersimpan di folder `dist/`:
 
 | File | Target |
 |------|--------|
-| `svgextract_linux_amd64` | x86_64 |
-| `svgextract_linux_arm64` | ARM 64-bit |
-| `svgextract_linux_armv7` | ARM 32-bit |
+| `kartu-madrasah_linux_amd64` | x86_64 |
+| `kartu-madrasah_linux_arm64` | ARM 64-bit |
+| `kartu-madrasah_linux_armv7` | ARM 32-bit |
 
 ## Manajemen Service
 
 ```bash
-systemctl status svgextract
-systemctl restart svgextract
-systemctl stop svgextract
-journalctl -u svgextract -f
+systemctl status kartu-madrasah
+systemctl restart kartu-madrasah
+systemctl stop kartu-madrasah
+journalctl -u kartu-madrasah -f
 ```
 
 ## Template Data CSV

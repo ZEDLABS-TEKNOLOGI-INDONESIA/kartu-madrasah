@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_NAME="svgextract"
+APP_NAME="kartu-madrasah"
 APP_DIR="/opt/$APP_NAME"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
 

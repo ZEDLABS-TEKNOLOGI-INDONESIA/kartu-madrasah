@@ -1,1 +1,32 @@
+# Build output
+dist/
+
+# Temporary job files
+/tmp/
+
+# File upload sementara user (bukan aset repo)
+template/foto.zip
+template/qr_user.zip
+template/logo_instansi.png
+
+# Draft generate
 draft.md
+
+# Go
+*.test
+*.out
+vendor/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local

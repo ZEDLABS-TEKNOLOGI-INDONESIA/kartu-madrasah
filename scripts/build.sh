@@ -3,7 +3,7 @@ set -e
 
 export PATH=$PATH:/usr/local/go/bin
 
-NAME="svgextract"
+NAME="kartu-madrasah"
 OUT="dist"
 
 mkdir -p $OUT
