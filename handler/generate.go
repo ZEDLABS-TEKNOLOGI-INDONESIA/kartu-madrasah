@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"kartu-madrasah/csvutil"
 	"kartu-madrasah/job"
@@ -18,6 +17,11 @@ import (
 )
 
 func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
+	if !h.Store.CanAcceptJob() {
+		jsonErr(w, "server sedang sibuk, coba beberapa saat lagi", 503)
+		return
+	}
+
 	r.ParseMultipartForm(128 << 20)
 
 	portrait := r.FormValue("orientation") != "landscape"
@@ -53,16 +57,33 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 	fotoMap := readMultipleFiles(r, "foto_user")
 	qrMap := readMultipleFiles(r, "qr_user")
 
-	jobID := fmt.Sprintf("job_%d", time.Now().UnixNano())
+	jobID := job.NewJobID()
 	j := h.Store.New(jobID)
 	j.Total = len(rows)
 
 	tmpDir, _ := os.MkdirTemp("", jobID)
 
+	h.Store.IncrActive()
+
 	go func() {
+		defer h.Store.DecrActive()
+
+		defer func() {
+			if rec := recover(); rec != nil {
+				j.Mu.Lock()
+				j.Status = "error"
+				j.Error += fmt.Sprintf("panic: %v\n", rec)
+				j.Mu.Unlock()
+				os.RemoveAll(tmpDir)
+			}
+		}()
+
 		j.Mu.Lock()
 		j.Status = "processing"
 		j.Mu.Unlock()
+
+		tpl := svg.Compile(svgData)
+		globalURIs := svg.EncodeImages(globalImages)
 
 		type prepared struct {
 			uid     string
@@ -72,27 +93,25 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 
 		var preparedList []prepared
 
-		for _, row := range rows {
+		for i, row := range rows {
 			uid := row["username"]
 			if uid == "" {
 				uid = row["uid_kartu"]
 			}
 			if uid == "" {
-				uid = fmt.Sprintf("row_%d", time.Now().UnixNano())
+				uid = fmt.Sprintf("row_%d", i)
 			}
+			fileUID := fmt.Sprintf("%s_%d", uid, i)
 
-			imgs := map[string][]byte{}
-			for k, v := range globalImages {
-				imgs[k] = v
-			}
+			rowImages := map[string][]byte{}
 			if data := findImage(fotoMap, row["foto_user"], row["username"]); data != nil {
-				imgs["foto_user"] = data
+				rowImages["foto_user"] = data
 			}
 			if data := findImage(qrMap, row["qr_user"], row["username"]); data != nil {
-				imgs["qr_user"] = data
+				rowImages["qr_user"] = data
 			}
 
-			injected, err := svg.Inject(svgData, row, imgs)
+			injected, err := tpl.Inject(row, globalURIs, rowImages)
 			if err != nil {
 				j.Mu.Lock()
 				j.Failed++
@@ -102,8 +121,8 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			svgPath := filepath.Join(tmpDir, uid+".svg")
-			pngPath := filepath.Join(tmpDir, uid+".png")
+			svgPath := filepath.Join(tmpDir, fileUID+".svg")
+			pngPath := filepath.Join(tmpDir, fileUID+".png")
 
 			if err := os.WriteFile(svgPath, injected, 0644); err != nil {
 				j.Mu.Lock()
@@ -117,22 +136,30 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 			preparedList = append(preparedList, prepared{uid, svgPath, pngPath})
 		}
 
-		var wg sync.WaitGroup
+		workCh := make(chan prepared, len(preparedList))
 		for _, p := range preparedList {
+			workCh <- p
+		}
+		close(workCh)
+
+		var wg sync.WaitGroup
+		for i := 0; i < svg.MaxWorkers; i++ {
 			wg.Add(1)
-			go func(p prepared) {
+			go func() {
 				defer wg.Done()
-				if err := svg.RunInkscape(p.svgPath, p.pngPath, portrait); err != nil {
+				for p := range workCh {
+					if err := svg.RunInkscape(p.svgPath, p.pngPath, portrait); err != nil {
+						j.Mu.Lock()
+						j.Failed++
+						j.Error += fmt.Sprintf("[%s] gagal render: %v\n", p.uid, err)
+						j.Mu.Unlock()
+					}
+					os.Remove(p.svgPath)
 					j.Mu.Lock()
-					j.Failed++
-					j.Error += fmt.Sprintf("[%s] gagal render: %v\n", p.uid, err)
+					j.Done++
 					j.Mu.Unlock()
 				}
-				os.Remove(p.svgPath)
-				j.Mu.Lock()
-				j.Done++
-				j.Mu.Unlock()
-			}(p)
+			}()
 		}
 		wg.Wait()
 
@@ -144,6 +171,7 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		j.Mu.Lock()
+		j.Done = j.Total
 		if j.Failed > 0 && len(outFiles) == 0 {
 			j.Status = "error"
 		} else {
@@ -262,13 +290,4 @@ func findImage(m map[string][]byte, pathInCSV, username string) []byte {
 		return d
 	}
 	return nil
-}
-
-func getJob(h *Handler, w http.ResponseWriter, r *http.Request) *job.Job {
-	id := r.URL.Query().Get("job_id")
-	j := h.Store.Get(id)
-	if j == nil {
-		jsonErr(w, "job tidak ditemukan", 404)
-	}
-	return j
 }

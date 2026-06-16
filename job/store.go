@@ -1,13 +1,19 @@
 package job
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
-const JobTTL = 2 * time.Hour
+const (
+	JobTTL        = 2 * time.Hour
+	MaxActiveJobs = 10
+)
 
 type Job struct {
 	ID        string
@@ -22,12 +28,19 @@ type Job struct {
 }
 
 type Store struct {
-	mu   sync.Mutex
-	jobs map[string]*Job
+	mu         sync.Mutex
+	jobs       map[string]*Job
+	activeJobs int32
 }
 
 func NewStore() *Store {
 	return &Store{jobs: make(map[string]*Job)}
+}
+
+func NewJobID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return "job_" + hex.EncodeToString(b)
 }
 
 func (s *Store) New(id string) *Job {
@@ -44,26 +57,49 @@ func (s *Store) Get(id string) *Job {
 	return s.jobs[id]
 }
 
+func (s *Store) CanAcceptJob() bool {
+	return atomic.LoadInt32(&s.activeJobs) < MaxActiveJobs
+}
+
+func (s *Store) IncrActive() {
+	atomic.AddInt32(&s.activeJobs, 1)
+}
+
+func (s *Store) DecrActive() {
+	atomic.AddInt32(&s.activeJobs, -1)
+}
+
 func (s *Store) Cleanup() {
+	type toDelete struct {
+		files []string
+	}
+
 	for {
 		time.Sleep(30 * time.Minute)
+
+		var expired []toDelete
+
 		s.mu.Lock()
 		for id, j := range s.jobs {
 			j.Mu.Lock()
-			expired := time.Since(j.CreatedAt) > JobTTL &&
+			isExpired := time.Since(j.CreatedAt) > JobTTL &&
 				(j.Status == "done" || j.Status == "error")
 			files := j.Files
 			j.Mu.Unlock()
-			if expired {
-				for _, f := range files {
-					os.Remove(f)
-				}
-				if len(files) > 0 {
-					os.RemoveAll(filepath.Dir(files[0]))
-				}
+			if isExpired {
+				expired = append(expired, toDelete{files})
 				delete(s.jobs, id)
 			}
 		}
 		s.mu.Unlock()
+
+		for _, e := range expired {
+			for _, f := range e.files {
+				os.Remove(f)
+			}
+			if len(e.files) > 0 {
+				os.RemoveAll(filepath.Dir(e.files[0]))
+			}
+		}
 	}
 }

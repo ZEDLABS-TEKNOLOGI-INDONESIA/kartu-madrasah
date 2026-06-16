@@ -3,6 +3,7 @@ package handler
 import (
 	"archive/zip"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -79,10 +80,11 @@ func (h *Handler) DownloadZip(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		data, err := os.ReadFile(f)
+		file, err := os.Open(f)
 		if err != nil {
 			continue
 		}
-		fw.Write(data)
+		io.Copy(fw, file)
+		file.Close()
 	}
 }

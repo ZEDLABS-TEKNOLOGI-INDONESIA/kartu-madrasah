@@ -3,6 +3,7 @@ package svg
 import (
 	"fmt"
 	"os/exec"
+	"runtime"
 )
 
 const (
@@ -11,15 +12,20 @@ const (
 	KTPLandscapeW = 1012
 	KTPLandscapeH = 638
 	DPI           = 300
-	MaxWorkers    = 4
 )
 
-var sem = make(chan struct{}, MaxWorkers)
+var MaxWorkers = func() int {
+	n := runtime.NumCPU()
+	if n < 2 {
+		return 2
+	}
+	if n > 16 {
+		return 16
+	}
+	return n
+}()
 
 func RunInkscape(svgPath, pngPath string, portrait bool) error {
-	sem <- struct{}{}
-	defer func() { <-sem }()
-
 	w, h := KTPLandscapeW, KTPLandscapeH
 	if portrait {
 		w, h = KTPPortraitW, KTPPortraitH
@@ -34,7 +40,6 @@ func RunInkscape(svgPath, pngPath string, portrait bool) error {
 		svgPath,
 	)
 
-	// Cegah Inkscape mencoba koneksi ke D-Bus / display server
 	cmd.Env = append(cmd.Environ(),
 		"DBUS_SESSION_BUS_ADDRESS=",
 		"DISPLAY=",

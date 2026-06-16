@@ -16,17 +16,42 @@ var textPlaceholders = []string{
 	"alamat_instansi",
 }
 
-func Inject(svgData []byte, row map[string]string, images map[string][]byte) ([]byte, error) {
-	content := string(svgData)
+type Template struct {
+	source string
+}
+
+func Compile(svgData []byte) *Template {
+	return &Template{source: string(svgData)}
+}
+
+func EncodeImages(images map[string][]byte) map[string]string {
+	result := make(map[string]string, len(images))
+	for id, data := range images {
+		if len(data) == 0 {
+			continue
+		}
+		b64 := base64.StdEncoding.EncodeToString(data)
+		result[id] = "data:" + detectMime(data) + ";base64," + b64
+	}
+	return result
+}
+
+func (t *Template) Inject(row map[string]string, globalURIs map[string]string, rowImages map[string][]byte) ([]byte, error) {
+	pairs := make([]string, 0, len(textPlaceholders)*2)
 	for _, key := range textPlaceholders {
-		placeholder := "%VAR_" + key + "%"
 		val := row[key]
 		if val == "" {
 			val = row[strings.ReplaceAll(key, "_", "")]
 		}
-		content = strings.ReplaceAll(content, placeholder, escXML(val))
+		pairs = append(pairs, "%VAR_"+key+"%", escXML(val))
 	}
-	for id, imgData := range images {
+	content := strings.NewReplacer(pairs...).Replace(t.source)
+
+	for id, uri := range globalURIs {
+		content = embedImageInSVG(content, id, uri)
+	}
+
+	for id, imgData := range rowImages {
 		if len(imgData) == 0 {
 			continue
 		}
@@ -34,6 +59,7 @@ func Inject(svgData []byte, row map[string]string, images map[string][]byte) ([]
 		dataURI := "data:" + detectMime(imgData) + ";base64," + b64
 		content = embedImageInSVG(content, id, dataURI)
 	}
+
 	return []byte(content), nil
 }
 

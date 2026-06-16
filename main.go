@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"kartu-madrasah/handler"
 	"kartu-madrasah/job"
@@ -45,9 +49,28 @@ func main() {
 	mux.HandleFunc("/api/download-zip", h.DownloadZip)
 	mux.HandleFunc("/", h.Static)
 
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 10 * time.Minute,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		<-ctx.Done()
+		shutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		srv.Shutdown(shutCtx)
+	}()
+
 	fmt.Printf("Server berjalan di http://localhost:%s\n", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintf(os.Stderr, "server error: %v\n", err)
 		os.Exit(1)
 	}
+	fmt.Println("Server berhenti.")
 }

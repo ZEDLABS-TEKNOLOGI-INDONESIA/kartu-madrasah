@@ -31,15 +31,20 @@ func (h *Handler) Static(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch filepath.Ext(path) {
+	ext := filepath.Ext(path)
+	switch ext {
 	case ".css":
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
 	case ".js":
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
 	case ".ico":
 		w.Header().Set("Content-Type", "image/x-icon")
+		w.Header().Set("Cache-Control", "public, max-age=604800")
 	default:
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
 	}
 	w.Write(content)
 }

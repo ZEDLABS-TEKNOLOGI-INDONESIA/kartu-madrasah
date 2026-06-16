@@ -66,6 +66,7 @@ build_app() {
 
 create_service() {
   PORT="${PORT:-8090}"
+  WORKERS="${WORKERS:-8}"
   cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=Generator Kartu Otomatis
@@ -77,9 +78,21 @@ ExecStart=$BIN
 Restart=on-failure
 RestartSec=5
 Environment=PORT=$PORT
+Environment=MAX_WORKERS=$WORKERS
 WorkingDirectory=$APP_DIR
 StandardOutput=journal
 StandardError=journal
+
+# Batasi resource
+LimitNOFILE=65536
+LimitNPROC=512
+MemoryMax=4G
+CPUQuota=80%
+
+# Keamanan
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=$APP_DIR /tmp
 
 [Install]
 WantedBy=multi-user.target
