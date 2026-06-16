@@ -108,7 +108,7 @@ func main() {
 	srv := &http.Server{
 		Addr: ":" + port,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("X-Powered-By", "Go")
+			w.Header().Set("X-Powered-By", "Go/1.26")
 			mux.ServeHTTP(w, r)
 		}),
 		ReadTimeout:  60 * time.Second,
