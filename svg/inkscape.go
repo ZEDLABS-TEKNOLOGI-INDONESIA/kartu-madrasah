@@ -25,7 +25,12 @@ var MaxWorkers = func() int {
 	return n
 }()
 
+var sem = make(chan struct{}, MaxWorkers)
+
 func RunInkscape(svgPath, pngPath string, portrait bool) error {
+	sem <- struct{}{}
+	defer func() { <-sem }()
+
 	w, h := KTPLandscapeW, KTPLandscapeH
 	if portrait {
 		w, h = KTPPortraitW, KTPPortraitH

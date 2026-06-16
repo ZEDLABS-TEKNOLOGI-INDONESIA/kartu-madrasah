@@ -13,6 +13,9 @@ import (
 
 	"kartu-madrasah/handler"
 	"kartu-madrasah/job"
+	"kartu-madrasah/worker"
+
+	"github.com/redis/go-redis/v9"
 )
 
 //go:embed static/index.html static/style.css static/script.js static/favicon.ico template/data.csv template/desain.svg
@@ -24,8 +27,33 @@ func main() {
 		port = "8090"
 	}
 
-	store := job.NewStore()
-	go store.Cleanup()
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://localhost:6379"
+	}
+
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "redis URL tidak valid: %v\n", err)
+		os.Exit(1)
+	}
+	rdb := redis.NewClient(opt)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "gagal koneksi ke Redis: %v\n", err)
+		os.Exit(1)
+	}
+
+	store := job.NewStore(rdb)
+	queue := job.NewQueue(rdb)
+
+	store.StartCleanup(ctx)
+
+	w := worker.New(store, queue)
+	w.Start(ctx)
 
 	staticFS, err := fs.Sub(embeddedFiles, ".")
 	if err != nil {
@@ -35,6 +63,7 @@ func main() {
 
 	h := &handler.Handler{
 		Store:       store,
+		Queue:       queue,
 		StaticFiles: staticFS,
 	}
 
@@ -47,6 +76,7 @@ func main() {
 	mux.HandleFunc("/api/list", h.List)
 	mux.HandleFunc("/api/download", h.DownloadOne)
 	mux.HandleFunc("/api/download-zip", h.DownloadZip)
+	mux.HandleFunc("/api/queue-info", h.QueueInfo)
 	mux.HandleFunc("/", h.Static)
 
 	srv := &http.Server{
@@ -56,9 +86,6 @@ func main() {
 		WriteTimeout: 10 * time.Minute,
 		IdleTimeout:  120 * time.Second,
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	go func() {
 		<-ctx.Done()

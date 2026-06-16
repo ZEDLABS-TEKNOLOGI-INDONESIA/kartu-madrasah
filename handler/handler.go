@@ -10,6 +10,7 @@ import (
 
 type Handler struct {
 	Store       *job.Store
+	Queue       *job.Queue
 	StaticFiles fs.FS
 }
 

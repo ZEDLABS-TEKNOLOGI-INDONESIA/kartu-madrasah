@@ -61,6 +61,13 @@ async function startGenerate() {
     showAlert("Upload file CSV dan SVG terlebih dahulu.", "error");
     return;
   }
+
+  if (currentJobId && pollTimer) {
+    if (!confirm("Ada proses yang sedang berjalan. Mulai ulang?")) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
   var fd = new FormData();
   fd.append("csv", csv);
   fd.append("svg", svg);
@@ -73,17 +80,32 @@ async function startGenerate() {
   Array.from(document.getElementById("qrInput").files).forEach(function (f) {
     fd.append("qr_user", f);
   });
+
   document.getElementById("btnGenerate").disabled = true;
   document.getElementById("progressWrap").style.display = "block";
   document.getElementById("resultCard").style.display = "none";
   document.getElementById("resultGrid").innerHTML = "";
   setProgress(-1, 0, 0, "Mengirim data...");
   hideAlert();
+
   try {
     var res = await fetch("/api/generate", { method: "POST", body: fd });
     var data = await res.json();
     if (!res.ok) {
-      showAlert(data.error || "Gagal memulai generate.", "error");
+      if (res.status === 503) {
+        var qi = await fetch("/api/queue-info");
+        var qd = await qi.json();
+        showAlert(
+          "Server sedang sibuk. Antrian: " +
+            qd.queue_length +
+            " / " +
+            qd.max_queue +
+            ". Coba beberapa saat lagi.",
+          "error"
+        );
+      } else {
+        showAlert(data.error || "Gagal memulai generate.", "error");
+      }
       resetBtn();
       return;
     }
@@ -105,10 +127,9 @@ function pollStatus() {
       setProgress(pct, data.done, data.total, "Memproses kartu...");
     } else if (data.status === "done") {
       clearInterval(pollTimer);
+      pollTimer = null;
       var msg = "Selesai. " + data.total + " kartu diproses";
-      if (data.failed > 0) {
-        msg += ", " + data.failed + " gagal";
-      }
+      if (data.failed > 0) msg += ", " + data.failed + " gagal";
       msg += ".";
       setProgress(100, data.total, data.total, msg);
       if (data.failed > 0 && data.error) {
@@ -118,6 +139,7 @@ function pollStatus() {
       resetBtn();
     } else if (data.status === "error") {
       clearInterval(pollTimer);
+      pollTimer = null;
       showAlert("Error: " + data.error, "error");
       resetBtn();
     }
@@ -131,9 +153,7 @@ async function loadResults() {
   selectedFiles = new Set();
   currentPage = 1;
   var totalText = allFiles.length + " kartu";
-  if (data.failed > 0) {
-    totalText += " (" + data.failed + " gagal)";
-  }
+  if (data.failed > 0) totalText += " (" + data.failed + " gagal)";
   document.getElementById("resultTotal").textContent = totalText;
   document.getElementById("resultCard").style.display = "block";
   renderPage();

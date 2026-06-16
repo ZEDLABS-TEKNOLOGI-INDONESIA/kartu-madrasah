@@ -3,13 +3,11 @@ package handler
 import (
 	"archive/zip"
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"kartu-madrasah/csvutil"
 	"kartu-madrasah/job"
@@ -17,7 +15,14 @@ import (
 )
 
 func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
-	if !h.Store.CanAcceptJob() {
+	ctx := r.Context()
+
+	ok, err := h.Store.CanAcceptJob(ctx)
+	if err != nil {
+		jsonErr(w, "redis error", 500)
+		return
+	}
+	if !ok {
 		jsonErr(w, "server sedang sibuk, coba beberapa saat lagi", 503)
 		return
 	}
@@ -48,171 +53,63 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	globalImages := map[string][]byte{}
-	if lf, _, err := r.FormFile("logo_instansi"); err == nil {
-		globalImages["logo_instansi"], _ = io.ReadAll(lf)
-		lf.Close()
+	jobID := job.NewJobID()
+	tmpDir, err := os.MkdirTemp("", jobID)
+	if err != nil {
+		jsonErr(w, "gagal membuat direktori sementara", 500)
+		return
 	}
 
-	fotoMap := readMultipleFiles(r, "foto_user")
-	qrMap := readMultipleFiles(r, "qr_user")
+	inputDir := filepath.Join(tmpDir, "input")
+	os.MkdirAll(filepath.Join(inputDir, "foto"), 0755)
+	os.MkdirAll(filepath.Join(inputDir, "qr"), 0755)
+	os.MkdirAll(filepath.Join(tmpDir, "output"), 0755)
 
-	jobID := job.NewJobID()
-	j := h.Store.New(jobID)
-	j.Total = len(rows)
+	os.WriteFile(filepath.Join(inputDir, "desain.svg"), svgData, 0644)
+	os.WriteFile(filepath.Join(inputDir, "data.csv"), csvData, 0644)
 
-	tmpDir, _ := os.MkdirTemp("", jobID)
+	if lf, _, err := r.FormFile("logo_instansi"); err == nil {
+		data, _ := io.ReadAll(lf)
+		lf.Close()
+		os.WriteFile(filepath.Join(inputDir, "logo_instansi"), data, 0644)
+	}
 
-	h.Store.IncrActive()
+	saveMultipleFiles(r, "foto_user", filepath.Join(inputDir, "foto"))
+	saveMultipleFiles(r, "qr_user", filepath.Join(inputDir, "qr"))
 
-	go func() {
-		defer h.Store.DecrActive()
+	if err := h.Store.Create(ctx, jobID, len(rows), tmpDir); err != nil {
+		os.RemoveAll(tmpDir)
+		jsonErr(w, "gagal membuat job", 500)
+		return
+	}
 
-		defer func() {
-			if rec := recover(); rec != nil {
-				j.Mu.Lock()
-				j.Status = "error"
-				j.Error += fmt.Sprintf("panic: %v\n", rec)
-				j.Mu.Unlock()
-				os.RemoveAll(tmpDir)
-			}
-		}()
-
-		j.Mu.Lock()
-		j.Status = "processing"
-		j.Mu.Unlock()
-
-		tpl := svg.Compile(svgData)
-		globalURIs := svg.EncodeImages(globalImages)
-
-		uidCount := make(map[string]int, len(rows))
-		for _, row := range rows {
-			uid := row["username"]
-			if uid == "" {
-				uid = row["uid_kartu"]
-			}
-			if uid == "" {
-				uid = "row"
-			}
-			uidCount[uid]++
-		}
-		uidSeen := make(map[string]int, len(rows))
-
-		type prepared struct {
-			uid     string
-			svgPath string
-			pngPath string
-		}
-
-		var preparedList []prepared
-
-		for i, row := range rows {
-			uid := row["username"]
-			if uid == "" {
-				uid = row["uid_kartu"]
-			}
-			if uid == "" {
-				uid = fmt.Sprintf("row_%d", i)
-			}
-
-			var fileUID string
-			if uidCount[uid] > 1 {
-				fileUID = fmt.Sprintf("%s_%d", uid, uidSeen[uid])
-				uidSeen[uid]++
-			} else {
-				fileUID = uid
-			}
-
-			rowImages := map[string][]byte{}
-			if data := findImage(fotoMap, row["foto_user"], row["username"]); data != nil {
-				rowImages["foto_user"] = data
-			}
-			if data := findImage(qrMap, row["qr_user"], row["username"]); data != nil {
-				rowImages["qr_user"] = data
-			}
-
-			injected, err := tpl.Inject(row, globalURIs, rowImages)
-			if err != nil {
-				j.Mu.Lock()
-				j.Failed++
-				j.Error += fmt.Sprintf("[%s] gagal inject SVG: %v\n", uid, err)
-				j.Done++
-				j.Mu.Unlock()
-				continue
-			}
-
-			svgPath := filepath.Join(tmpDir, fileUID+".svg")
-			pngPath := filepath.Join(tmpDir, fileUID+".png")
-
-			if err := os.WriteFile(svgPath, injected, 0644); err != nil {
-				j.Mu.Lock()
-				j.Failed++
-				j.Error += fmt.Sprintf("[%s] gagal tulis SVG: %v\n", uid, err)
-				j.Done++
-				j.Mu.Unlock()
-				continue
-			}
-
-			preparedList = append(preparedList, prepared{uid, svgPath, pngPath})
-		}
-
-		workCh := make(chan prepared, len(preparedList))
-		for _, p := range preparedList {
-			workCh <- p
-		}
-		close(workCh)
-
-		var wg sync.WaitGroup
-		for i := 0; i < svg.MaxWorkers; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for p := range workCh {
-					if err := svg.RunInkscape(p.svgPath, p.pngPath, portrait); err != nil {
-						j.Mu.Lock()
-						j.Failed++
-						j.Error += fmt.Sprintf("[%s] gagal render: %v\n", p.uid, err)
-						j.Mu.Unlock()
-					}
-					os.Remove(p.svgPath)
-					j.Mu.Lock()
-					j.Done++
-					j.Mu.Unlock()
-				}
-			}()
-		}
-		wg.Wait()
-
-		var outFiles []string
-		for _, p := range preparedList {
-			if _, err := os.Stat(p.pngPath); err == nil {
-				outFiles = append(outFiles, p.pngPath)
-			}
-		}
-
-		j.Mu.Lock()
-		j.Done = j.Total
-		if j.Failed > 0 && len(outFiles) == 0 {
-			j.Status = "error"
-		} else {
-			j.Status = "done"
-		}
-		j.Files = outFiles
-		j.Mu.Unlock()
-	}()
+	payload := job.QueuePayload{
+		JobID:    jobID,
+		TmpDir:   tmpDir,
+		Portrait: portrait,
+		Total:    len(rows),
+	}
+	if err := h.Queue.Push(ctx, payload); err != nil {
+		os.RemoveAll(tmpDir)
+		jsonErr(w, "gagal mengirim ke antrian", 500)
+		return
+	}
 
 	jsonOK(w, map[string]string{"job_id": jobID})
 }
 
 func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id := r.URL.Query().Get("job_id")
-	j := h.Store.Get(id)
+	j, err := h.Store.Get(ctx, id)
+	if err != nil {
+		jsonErr(w, "redis error", 500)
+		return
+	}
 	if j == nil {
 		jsonErr(w, "job tidak ditemukan", 404)
 		return
 	}
-	j.Mu.Lock()
-	defer j.Mu.Unlock()
 	jsonOK(w, map[string]interface{}{
 		"status": j.Status,
 		"total":  j.Total,
@@ -223,14 +120,17 @@ func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id := r.URL.Query().Get("job_id")
-	j := h.Store.Get(id)
+	j, err := h.Store.Get(ctx, id)
+	if err != nil {
+		jsonErr(w, "redis error", 500)
+		return
+	}
 	if j == nil {
 		jsonErr(w, "job tidak ditemukan", 404)
 		return
 	}
-	j.Mu.Lock()
-	defer j.Mu.Unlock()
 	names := make([]string, len(j.Files))
 	for i, f := range j.Files {
 		names[i] = filepath.Base(f)
@@ -243,10 +143,23 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func readMultipleFiles(r *http.Request, key string) map[string][]byte {
-	result := map[string][]byte{}
+func (h *Handler) QueueInfo(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	n, err := h.Store.QueueLen(ctx)
+	if err != nil {
+		jsonErr(w, "redis error", 500)
+		return
+	}
+	jsonOK(w, map[string]interface{}{
+		"queue_length": n,
+		"max_queue":    job.MaxQueueLen,
+		"busy":         n >= int64(job.MaxQueueLen),
+	})
+}
+
+func saveMultipleFiles(r *http.Request, key, dir string) {
 	if r.MultipartForm == nil {
-		return result
+		return
 	}
 	for _, fh := range r.MultipartForm.File[key] {
 		f, err := fh.Open()
@@ -257,17 +170,15 @@ func readMultipleFiles(r *http.Request, key string) map[string][]byte {
 		f.Close()
 
 		if strings.EqualFold(filepath.Ext(fh.Filename), ".zip") {
-			extractZipImages(data, result)
+			extractZipToDir(data, dir)
 			continue
 		}
 
-		result[fh.Filename] = data
-		result[strings.TrimSuffix(fh.Filename, filepath.Ext(fh.Filename))] = data
+		os.WriteFile(filepath.Join(dir, fh.Filename), data, 0644)
 	}
-	return result
 }
 
-func extractZipImages(data []byte, result map[string][]byte) {
+func extractZipToDir(data []byte, dir string) {
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		return
@@ -284,30 +195,28 @@ func extractZipImages(data []byte, result map[string][]byte) {
 		if err != nil {
 			continue
 		}
-		content, err := io.ReadAll(rc)
+		content, _ := io.ReadAll(rc)
 		rc.Close()
-		if err != nil {
-			continue
-		}
-		result[name] = content
-		result[strings.TrimSuffix(name, filepath.Ext(name))] = content
+		os.WriteFile(filepath.Join(dir, name), content, 0644)
 	}
 }
 
-func findImage(m map[string][]byte, pathInCSV, username string) []byte {
-	if d, ok := m[filepath.Base(pathInCSV)]; ok {
-		return d
+func (h *Handler) PreviewSVG(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(32 << 20)
+
+	svgFile, _, err := r.FormFile("svg")
+	if err != nil {
+		jsonErr(w, "SVG tidak ditemukan", 400)
+		return
 	}
-	if d, ok := m[pathInCSV]; ok {
-		return d
+	svgData, _ := io.ReadAll(svgFile)
+	svgFile.Close()
+
+	cfg, err := svg.ExtractConfig(svgData)
+	if err != nil {
+		jsonErr(w, "gagal parse SVG: "+err.Error(), 500)
+		return
 	}
-	for _, ext := range []string{".png", ".jpg", ".jpeg", ".webp"} {
-		if d, ok := m[username+ext]; ok {
-			return d
-		}
-	}
-	if d, ok := m[username]; ok {
-		return d
-	}
-	return nil
+
+	jsonOK(w, cfg)
 }
