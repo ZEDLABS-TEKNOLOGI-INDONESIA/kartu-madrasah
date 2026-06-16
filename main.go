@@ -44,7 +44,7 @@ func cleanupOrphanedJobs(baseDir string) {
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8092"
+		port = "8090"
 	}
 
 	redisURL := os.Getenv("REDIS_URL")
