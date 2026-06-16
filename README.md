@@ -165,4 +165,4 @@ Base URL: `http://localhost:8090`
 
 ## Lisensi
 
-MIT
+[MIT](LICENSE)

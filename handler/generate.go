@@ -85,6 +85,19 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		tpl := svg.Compile(svgData)
 		globalURIs := svg.EncodeImages(globalImages)
 
+		uidCount := make(map[string]int, len(rows))
+		for _, row := range rows {
+			uid := row["username"]
+			if uid == "" {
+				uid = row["uid_kartu"]
+			}
+			if uid == "" {
+				uid = "row"
+			}
+			uidCount[uid]++
+		}
+		uidSeen := make(map[string]int, len(rows))
+
 		type prepared struct {
 			uid     string
 			svgPath string
@@ -101,7 +114,14 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 			if uid == "" {
 				uid = fmt.Sprintf("row_%d", i)
 			}
-			fileUID := fmt.Sprintf("%s_%d", uid, i)
+
+			var fileUID string
+			if uidCount[uid] > 1 {
+				fileUID = fmt.Sprintf("%s_%d", uid, uidSeen[uid])
+				uidSeen[uid]++
+			} else {
+				fileUID = uid
+			}
 
 			rowImages := map[string][]byte{}
 			if data := findImage(fotoMap, row["foto_user"], row["username"]); data != nil {
